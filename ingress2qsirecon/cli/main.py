@@ -56,7 +56,7 @@ def _ingress2qsirecon(**kwargs):
     layouts = create_layout(input_dir, output_dir, input_pipeline, participant_label)
 
     # Create and run overall workflow, which will be broken down to single subject workflows
-    ingress2qsirecon_wf = create_ingress2qsirecon_wf(layouts, base_dir=work_dir, skip_mni2009c_norm=skip_mni2009c_norm)
+    ingress2qsirecon_wf = create_ingress2qsirecon_wf(layouts, input_pipeline,base_dir=work_dir, skip_mni2009c_norm=skip_mni2009c_norm)
     ingress2qsirecon_wf.run()
 
 

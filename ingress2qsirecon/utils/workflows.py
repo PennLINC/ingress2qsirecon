@@ -26,7 +26,7 @@ def parse_layout(subject_layout):
     return tuple(subject_layout.values())
 
 
-def create_single_subject_wf(subject_layout, skip_mni2009c_norm=False):
+def create_single_subject_wf(subject_layout, input_pipeline, skip_mni2009c_norm=False):
     """
     Create a nipype workflow to ingest a single subject.
 
@@ -140,6 +140,8 @@ def create_single_subject_wf(subject_layout, skip_mni2009c_norm=False):
             (parse_layout_node, create_bfile_node, [("bids_b", "b_file_out")]),
         ]
     )
+    #if input_pipeline == "ukb":
+    #    conform_dwi_node.inputs.orientation = "LAS"
 
     # Create nodes to conform anatomicals and save to BIDS layout
     # TMP If false because does not work yet
@@ -333,7 +335,7 @@ def create_single_subject_wf(subject_layout, skip_mni2009c_norm=False):
     return wf
 
 
-def create_ingress2qsirecon_wf(layouts, name="ingress2qsirecon_wf", base_dir=os.getcwd(), skip_mni2009c_norm=False):
+def create_ingress2qsirecon_wf(layouts, input_pipeline, name="ingress2qsirecon_wf", base_dir=os.getcwd(), skip_mni2009c_norm=False):
     """
     Creates the overall ingress2qsirecon workflow.
 
@@ -341,6 +343,9 @@ def create_ingress2qsirecon_wf(layouts, name="ingress2qsirecon_wf", base_dir=os.
     ----------
     layouts : list of dict
         A list of dictionaries, one per subject, from the create_layout function.
+
+    input_pipeline : str
+        The name of the input pipeline (e.g. 'hcpya', 'ukb')
 
     name : str, optional
         The name of the workflow. Default is "ingress2qsirecon_wf".
@@ -361,7 +366,7 @@ def create_ingress2qsirecon_wf(layouts, name="ingress2qsirecon_wf", base_dir=os.
     print(f"Subject(s) to run: {subjects_to_run}")
 
     for subject_layout in layouts:
-        single_subject_wf = create_single_subject_wf(subject_layout, skip_mni2009c_norm=skip_mni2009c_norm)
+        single_subject_wf = create_single_subject_wf(subject_layout, input_pipeline, skip_mni2009c_norm=skip_mni2009c_norm)
         wf.add_nodes([single_subject_wf])
 
     return wf

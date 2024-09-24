@@ -124,20 +124,30 @@ def make_bids_file_paths(subject_layout: dict) -> dict:
     }
 
     # Now for optional files
-    if subject_layout['t1w_brain']:
+    if 't1w_brain' in subject_layout:
         bids_t1w_brain = os.path.join(bids_base, "anat", sub_session_string + "_desc-preproc_T1w.nii.gz")
         bids_file_paths.update({"bids_t1w_brain": Path(bids_t1w_brain)})
-    if subject_layout['brain_mask']:
+    if "brain_mask" in subject_layout:
         bids_brain_mask = os.path.join(bids_base, "anat", sub_session_string + "_desc-brain_mask.nii.gz")
         bids_file_paths.update({"bids_brain_mask": Path(bids_brain_mask)})
-    if subject_layout['subject2MNI']:
+    if "subject2MNI" in subject_layout:
         bids_subject2MNI = os.path.join(
             bids_base, "anat", sub_session_string + f"_from-T1w_to-{mni_template}_mode-image_xfm.h5"
         )
         bids_file_paths.update({"bids_subject2MNI": Path(bids_subject2MNI)})
-    if subject_layout['MNI2subject']:
+    else:
+        bids_subject2MNI = os.path.join(
+            bids_base, "anat", sub_session_string + f"_from-T1w_to-MNI152NLin2009cAsym_mode-image_xfm.h5"
+        )
+        bids_file_paths.update({"bids_subject2MNI": Path(bids_subject2MNI)})
+    if "MNI2subject" in subject_layout:
         bids_MNI2subject = os.path.join(
             bids_base, "anat", sub_session_string + f"_from-{mni_template}_to-T1w_mode-image_xfm.h5"
+        )
+        bids_file_paths.update({"bids_MNI2subject": Path(bids_MNI2subject)})
+    else:
+        bids_MNI2subject = os.path.join(
+            bids_base, "anat", sub_session_string + f"_from-MNI152NLin2009cAsym_to-T1w_mode-image_xfm.h5"
         )
         bids_file_paths.update({"bids_MNI2subject": Path(bids_MNI2subject)})
 
@@ -204,6 +214,7 @@ def create_layout(input_dir: Path, output_dir: Path, input_pipeline: str, partic
             continue
 
         subject_layout = {
+            "original_name": potential_dir.name,
             "subject": subject,
             "session": renamed_ses,
             "path": Path(potential_dir),
@@ -221,7 +232,7 @@ def create_layout(input_dir: Path, output_dir: Path, input_pipeline: str, partic
     layout = sorted(layout, key=lambda x: x["subject"])
 
     # Raise warnings for requested subjects not in layout
-    missing_particpants = sorted(set(participant_label) - set([subject["subject"] for subject in layout]))
+    missing_particpants = sorted(set(participant_label) - set([subject["original_name"] for subject in layout]))
     if missing_particpants:
         warn(
             f"Requested participant(s) {missing_particpants} not found in layout, please confirm their data exists and are properly organized."
