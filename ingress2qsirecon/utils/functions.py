@@ -37,7 +37,7 @@ PIPELINE_INFO = {
             "bvals": ["DTI", "dMRI", "dMRI", "bvals"],
             "bvecs": ["DTI", "dMRI", "dMRI", "bvecs"],
             "dwi": ["DTI", "dMRI", "dMRI", "data_ud.nii.gz"],
-            "dwiref": ["DTI", "dMRI", "dMRI", "dti_FA.nii.gz"],
+            # "dwiref": ["DTI", "dMRI", "dMRI", "dti_FA.nii.gz"],
             "t1w_brain": ["T1", "T1_unbiased_brain.nii.gz"],
             "brain_mask": ["T1", "T1_brain_mask.nii.gz"],
             # TODO: Add UKB XFM path
@@ -97,6 +97,9 @@ def make_bids_file_paths(subject_layout: dict) -> dict:
     bids_file_paths : :obj:`dict`
         A dictionary of BIDS-ified file paths.
     """
+    import nibabel as nb
+    import numpy as np
+
     bids_base = str(subject_layout["bids_base"])
     subject = str(subject_layout["subject"])
     session = subject_layout["session"]
@@ -106,13 +109,33 @@ def make_bids_file_paths(subject_layout: dict) -> dict:
         sub_session_string = f"sub-{subject}_ses-{session}"
     mni_template = str(subject_layout["MNI_template"])
 
+    # Check for DWI obliquity
+    dwi_img = nb.load(subject_layout["dwi"])
+    dwi_obliquity = np.any(nb.affines.obliquity(dwi_img.affine) > 1e-4)
+    if dwi_obliquity:
+        dwi_oblique_string = "_acq-VARIANTOBLIQUE"
+    else:
+        dwi_oblique_string = ""
+
     # BIDS-ify required files
-    bids_dwi_file = os.path.join(bids_base, "dwi", sub_session_string + "_space-T1w_desc-preproc_dwi.nii.gz")
-    bids_bval_file = os.path.join(bids_base, "dwi", sub_session_string + "_space-T1w_desc-preproc_dwi.bval")
-    bids_bvec_file = os.path.join(bids_base, "dwi", sub_session_string + "_space-T1w_desc-preproc_dwi.bvec")
-    bids_b_file = os.path.join(bids_base, "dwi", sub_session_string + "_space-T1w_desc-preproc_dwi.b")
-    bids_bmtxt_file = os.path.join(bids_base, "dwi", sub_session_string + "_space-T1w_desc-preproc_dwi.bmtxt")
-    bids_dwiref_file = os.path.join(bids_base, "dwi", sub_session_string + "_space-T1w_dwiref.nii.gz")
+    bids_dwi_file = os.path.join(
+        bids_base, "dwi", sub_session_string + dwi_oblique_string + "_space-T1w_desc-preproc_dwi.nii.gz"
+    )
+    bids_bval_file = os.path.join(
+        bids_base, "dwi", sub_session_string + dwi_oblique_string + "_space-T1w_desc-preproc_dwi.bval"
+    )
+    bids_bvec_file = os.path.join(
+        bids_base, "dwi", sub_session_string + dwi_oblique_string + "_space-T1w_desc-preproc_dwi.bvec"
+    )
+    bids_b_file = os.path.join(
+        bids_base, "dwi", sub_session_string + dwi_oblique_string + "_space-T1w_desc-preproc_dwi.b"
+    )
+    bids_bmtxt_file = os.path.join(
+        bids_base, "dwi", sub_session_string + dwi_oblique_string + "_space-T1w_desc-preproc_dwi.bmtxt"
+    )
+    bids_dwiref_file = os.path.join(
+        bids_base, "dwi", sub_session_string + dwi_oblique_string + "_space-T1w_dwiref.nii.gz"
+    )
 
     bids_file_paths = {
         "bids_dwi": Path(bids_dwi_file),
@@ -125,10 +148,22 @@ def make_bids_file_paths(subject_layout: dict) -> dict:
 
     # Now for optional files
     if 't1w_brain' in subject_layout:
-        bids_t1w_brain = os.path.join(bids_base, "anat", sub_session_string + "_desc-preproc_T1w.nii.gz")
+        # Check for T1w obliquity
+        t1_img = nb.load(subject_layout["t1w_brain"])
+        t1_obliquity = np.any(nb.affines.obliquity(t1_img.affine) > 1e-4)
+        if t1_obliquity:
+            t1_oblique_string = "_acq-VARIANTOBLIQUE"
+        else:
+            t1_oblique_string = ""
+
+        bids_t1w_brain = os.path.join(
+            bids_base, "anat", sub_session_string + t1_oblique_string + "_desc-preproc_T1w.nii.gz"
+        )
         bids_file_paths.update({"bids_t1w_brain": Path(bids_t1w_brain)})
     if "brain_mask" in subject_layout:
-        bids_brain_mask = os.path.join(bids_base, "anat", sub_session_string + "_desc-brain_mask.nii.gz")
+        bids_brain_mask = os.path.join(
+            bids_base, "anat", sub_session_string + t1_oblique_string + "_desc-brain_mask.nii.gz"
+        )
         bids_file_paths.update({"bids_brain_mask": Path(bids_brain_mask)})
     if "subject2MNI" in subject_layout:
         bids_subject2MNI = os.path.join(

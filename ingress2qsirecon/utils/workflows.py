@@ -3,6 +3,7 @@ Nipype Workflows for Ingress2Qsirecon
 """
 
 import os
+import shutil
 from pathlib import Path
 
 from nipype.pipeline.engine import Workflow
@@ -57,6 +58,9 @@ def create_single_subject_wf(subject_layout, input_pipeline, skip_mni2009c_norm=
         A nipype workflow that operates on a single subject.
     """
     #### WHY DO I HAVE TO REIMPORT THIS STUFF??
+
+    import nibabel as nb
+    import numpy as np
     from nipype import (
         Node,
         Workflow,
@@ -140,14 +144,14 @@ def create_single_subject_wf(subject_layout, input_pipeline, skip_mni2009c_norm=
             (parse_layout_node, create_bfile_node, [("bids_b", "b_file_out")]),
         ]
     )
-    #if input_pipeline == "ukb":
+    # if input_pipeline == "ukb":
     #    conform_dwi_node.inputs.orientation = "LAS"
 
     # Create nodes to conform anatomicals and save to BIDS layout
-    # TMP If false because does not work yet
     if "t1w_brain" in subject_layout.keys():
         template_dimensions_node = Node(TemplateDimensions(), name="template_dimensions")
         conform_t1w_node = Node(Conform(), name="conform_t1w")
+
         wf.connect(
             [
                 (
@@ -196,6 +200,8 @@ def create_single_subject_wf(subject_layout, input_pipeline, skip_mni2009c_norm=
                 )
             ]
         )
+    else:
+        shutil.copy(subject_layout["dwiref"], subject_layout["bids_dwiref"])
 
     # Convert FNIRT nii warps to ITK nii, then ITK nii to ITK H5
     # Start with subject2MNI
@@ -335,7 +341,9 @@ def create_single_subject_wf(subject_layout, input_pipeline, skip_mni2009c_norm=
     return wf
 
 
-def create_ingress2qsirecon_wf(layouts, input_pipeline, name="ingress2qsirecon_wf", base_dir=os.getcwd(), skip_mni2009c_norm=False):
+def create_ingress2qsirecon_wf(
+    layouts, input_pipeline, name="ingress2qsirecon_wf", base_dir=os.getcwd(), skip_mni2009c_norm=False
+):
     """
     Creates the overall ingress2qsirecon workflow.
 
@@ -366,7 +374,9 @@ def create_ingress2qsirecon_wf(layouts, input_pipeline, name="ingress2qsirecon_w
     print(f"Subject(s) to run: {subjects_to_run}")
 
     for subject_layout in layouts:
-        single_subject_wf = create_single_subject_wf(subject_layout, input_pipeline, skip_mni2009c_norm=skip_mni2009c_norm)
+        single_subject_wf = create_single_subject_wf(
+            subject_layout, input_pipeline, skip_mni2009c_norm=skip_mni2009c_norm
+        )
         wf.add_nodes([single_subject_wf])
 
     return wf
