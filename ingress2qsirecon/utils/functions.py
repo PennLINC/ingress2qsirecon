@@ -105,7 +105,7 @@ def make_bids_file_paths(subject_layout: dict) -> dict:
     session = subject_layout["session"]
     if session == None:
         sub_session_string = f"sub-{subject}"
-        bids_base_session = bids_base, "func"
+        bids_base_session = bids_base
     else:
         sub_session_string = f"sub-{subject}_ses-{session}"
         bids_base_session = os.path.join(bids_base, f"ses-{session}")
