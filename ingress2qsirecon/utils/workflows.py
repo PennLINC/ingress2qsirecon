@@ -209,58 +209,59 @@ def create_single_subject_wf(subject_layout, input_pipeline, skip_mni2009c_norm=
 
     # Convert FNIRT nii warps to ITK nii, then ITK nii to ITK H5
     # Start with subject2MNI
-    if "subject2MNI" in subject_layout.keys():
-        convert_warpfield_node_subject2MNI = Node(ConvertWarpfield(), name="convert_warpfield_subject2MNI")
-        convert_warpfield_node_subject2MNI.inputs.itk_out_xfm = str(subject_layout["bids_subject2MNI"]).replace(
-            ".h5", ".nii.gz"
-        )
-        nii_to_h5_node_subject2MNI = Node(NIFTItoH5(), name="nii_to_h5_subject2MNI")
-        wf.connect(
-            [
-                (
-                    parse_layout_node,
-                    convert_warpfield_node_subject2MNI,
-                    [("subject2MNI", "fnirt_in_xfm"), ("MNI_ref", "fnirt_ref_file")],
-                ),
-                (
-                    convert_warpfield_node_subject2MNI,
-                    nii_to_h5_node_subject2MNI,
-                    [("itk_out_xfm", "xfm_nifti_in")],
-                ),
-                (
-                    parse_layout_node,
-                    nii_to_h5_node_subject2MNI,
-                    [("bids_subject2MNI", "xfm_h5_out")],
-                ),
-            ]
-        )
+    if False: # We're going to skip this because it doesn't work great, remove workbench dependency
+        if "subject2MNI" in subject_layout.keys():
+            convert_warpfield_node_subject2MNI = Node(ConvertWarpfield(), name="convert_warpfield_subject2MNI")
+            convert_warpfield_node_subject2MNI.inputs.itk_out_xfm = str(subject_layout["bids_subject2MNI"]).replace(
+                ".h5", ".nii.gz"
+            )
+            nii_to_h5_node_subject2MNI = Node(NIFTItoH5(), name="nii_to_h5_subject2MNI")
+            wf.connect(
+                [
+                    (
+                        parse_layout_node,
+                        convert_warpfield_node_subject2MNI,
+                        [("subject2MNI", "fnirt_in_xfm"), ("MNI_ref", "fnirt_ref_file")],
+                    ),
+                    (
+                        convert_warpfield_node_subject2MNI,
+                        nii_to_h5_node_subject2MNI,
+                        [("itk_out_xfm", "xfm_nifti_in")],
+                    ),
+                    (
+                        parse_layout_node,
+                        nii_to_h5_node_subject2MNI,
+                        [("bids_subject2MNI", "xfm_h5_out")],
+                    ),
+                ]
+            )
 
-    # Then MNI2Subject
-    if "MNI2subject" in subject_layout.keys():
-        convert_warpfield_node_MNI2subject = Node(ConvertWarpfield(), name="convert_warpfield_MNI2subject")
-        convert_warpfield_node_MNI2subject.inputs.itk_out_xfm = str(subject_layout["bids_MNI2subject"]).replace(
-            ".h5", ".nii.gz"
-        )
-        nii_to_h5_node_MNI2subject = Node(NIFTItoH5(), name="nii_to_h5_MNI2subject")
-        wf.connect(
-            [
-                (
-                    parse_layout_node,
-                    convert_warpfield_node_MNI2subject,
-                    [("MNI2subject", "fnirt_in_xfm"), ("MNI_ref", "fnirt_ref_file")],
-                ),
-                (
-                    convert_warpfield_node_MNI2subject,
-                    nii_to_h5_node_MNI2subject,
-                    [("itk_out_xfm", "xfm_nifti_in")],
-                ),
-                (
-                    parse_layout_node,
-                    nii_to_h5_node_MNI2subject,
-                    [("bids_MNI2subject", "xfm_h5_out")],
-                ),
-            ]
-        )
+        # Then MNI2Subject
+        if "MNI2subject" in subject_layout.keys():
+            convert_warpfield_node_MNI2subject = Node(ConvertWarpfield(), name="convert_warpfield_MNI2subject")
+            convert_warpfield_node_MNI2subject.inputs.itk_out_xfm = str(subject_layout["bids_MNI2subject"]).replace(
+                ".h5", ".nii.gz"
+            )
+            nii_to_h5_node_MNI2subject = Node(NIFTItoH5(), name="nii_to_h5_MNI2subject")
+            wf.connect(
+                [
+                    (
+                        parse_layout_node,
+                        convert_warpfield_node_MNI2subject,
+                        [("MNI2subject", "fnirt_in_xfm"), ("MNI_ref", "fnirt_ref_file")],
+                    ),
+                    (
+                        convert_warpfield_node_MNI2subject,
+                        nii_to_h5_node_MNI2subject,
+                        [("itk_out_xfm", "xfm_nifti_in")],
+                    ),
+                    (
+                        parse_layout_node,
+                        nii_to_h5_node_MNI2subject,
+                        [("bids_MNI2subject", "xfm_h5_out")],
+                    ),
+                ]
+            )
 
     # Now get transform to MNI2009cAsym
     MNI_template = subject_layout["MNI_template"]

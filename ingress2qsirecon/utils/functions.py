@@ -115,7 +115,7 @@ def make_bids_file_paths(subject_layout: dict) -> dict:
     dwi_img = nb.load(subject_layout["dwi"])
     dwi_obliquity = np.any(nb.affines.obliquity(dwi_img.affine) > 1e-4)
     if dwi_obliquity:
-        dwi_oblique_string = "_acq-VARIANTOBLIQUE"
+        dwi_oblique_string = "_acq-VARIANTOblique"
     else:
         dwi_oblique_string = ""
 
@@ -154,7 +154,7 @@ def make_bids_file_paths(subject_layout: dict) -> dict:
         t1_img = nb.load(subject_layout["t1w_brain"])
         t1_obliquity = np.any(nb.affines.obliquity(t1_img.affine) > 1e-4)
         if t1_obliquity:
-            t1_oblique_string = "_acq-VARIANTOBLIQUE"
+            t1_oblique_string = "_acq-VARIANTOblique"
         else:
             t1_oblique_string = ""
 
