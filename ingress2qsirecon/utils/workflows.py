@@ -3,6 +3,7 @@ Nipype Workflows for Ingress2Qsirecon
 """
 
 import os
+import shutil
 from pathlib import Path
 
 from nipype.pipeline.engine import Workflow
@@ -26,7 +27,7 @@ def parse_layout(subject_layout):
     return tuple(subject_layout.values())
 
 
-def create_single_subject_wf(subject_layout, skip_mni2009c_norm=False):
+def create_single_subject_wf(subject_layout, input_pipeline, skip_mni2009c_norm=False):
     """
     Create a nipype workflow to ingest a single subject.
 
@@ -57,6 +58,9 @@ def create_single_subject_wf(subject_layout, skip_mni2009c_norm=False):
         A nipype workflow that operates on a single subject.
     """
     #### WHY DO I HAVE TO REIMPORT THIS STUFF??
+
+    import nibabel as nb
+    import numpy as np
     from nipype import (
         Node,
         Workflow,
@@ -75,8 +79,12 @@ def create_single_subject_wf(subject_layout, skip_mni2009c_norm=False):
     # Make BIDS subject output folder
     bids_base = subject_layout['bids_base']
     if not os.path.exists(bids_base):
-        os.makedirs(Path(bids_base / "anat").resolve())
-        os.makedirs(Path(bids_base / "dwi").resolve())
+        os.makedirs(Path(bids_base / "anat").resolve(), exist_ok=True)
+    session = subject_layout['session']
+    if session == None:
+        os.makedirs(Path(bids_base / "dwi").resolve(), exist_ok=True)
+    else:
+        os.makedirs(Path(bids_base / f"ses-{session}" / "dwi").resolve(), exist_ok=True)
 
     # Create single subject workflow
     wf_name = f"ingress2qsirecon_single_subject_{subject_name}_wf"
@@ -140,12 +148,14 @@ def create_single_subject_wf(subject_layout, skip_mni2009c_norm=False):
             (parse_layout_node, create_bfile_node, [("bids_b", "b_file_out")]),
         ]
     )
+    # if input_pipeline == "ukb":
+    #    conform_dwi_node.inputs.orientation = "LAS"
 
     # Create nodes to conform anatomicals and save to BIDS layout
-    # TMP If false because does not work yet
     if "t1w_brain" in subject_layout.keys():
         template_dimensions_node = Node(TemplateDimensions(), name="template_dimensions")
         conform_t1w_node = Node(Conform(), name="conform_t1w")
+
         wf.connect(
             [
                 (
@@ -194,61 +204,64 @@ def create_single_subject_wf(subject_layout, skip_mni2009c_norm=False):
                 )
             ]
         )
+    else:
+        shutil.copy(subject_layout["dwiref"], subject_layout["bids_dwiref"])
 
     # Convert FNIRT nii warps to ITK nii, then ITK nii to ITK H5
     # Start with subject2MNI
-    if "subject2MNI" in subject_layout.keys():
-        convert_warpfield_node_subject2MNI = Node(ConvertWarpfield(), name="convert_warpfield_subject2MNI")
-        convert_warpfield_node_subject2MNI.inputs.itk_out_xfm = str(subject_layout["bids_subject2MNI"]).replace(
-            ".h5", ".nii.gz"
-        )
-        nii_to_h5_node_subject2MNI = Node(NIFTItoH5(), name="nii_to_h5_subject2MNI")
-        wf.connect(
-            [
-                (
-                    parse_layout_node,
-                    convert_warpfield_node_subject2MNI,
-                    [("subject2MNI", "fnirt_in_xfm"), ("MNI_ref", "fnirt_ref_file")],
-                ),
-                (
-                    convert_warpfield_node_subject2MNI,
-                    nii_to_h5_node_subject2MNI,
-                    [("itk_out_xfm", "xfm_nifti_in")],
-                ),
-                (
-                    parse_layout_node,
-                    nii_to_h5_node_subject2MNI,
-                    [("bids_subject2MNI", "xfm_h5_out")],
-                ),
-            ]
-        )
+    if False: # We're going to skip this because it doesn't work great, remove workbench dependency
+        if "subject2MNI" in subject_layout.keys():
+            convert_warpfield_node_subject2MNI = Node(ConvertWarpfield(), name="convert_warpfield_subject2MNI")
+            convert_warpfield_node_subject2MNI.inputs.itk_out_xfm = str(subject_layout["bids_subject2MNI"]).replace(
+                ".h5", ".nii.gz"
+            )
+            nii_to_h5_node_subject2MNI = Node(NIFTItoH5(), name="nii_to_h5_subject2MNI")
+            wf.connect(
+                [
+                    (
+                        parse_layout_node,
+                        convert_warpfield_node_subject2MNI,
+                        [("subject2MNI", "fnirt_in_xfm"), ("MNI_ref", "fnirt_ref_file")],
+                    ),
+                    (
+                        convert_warpfield_node_subject2MNI,
+                        nii_to_h5_node_subject2MNI,
+                        [("itk_out_xfm", "xfm_nifti_in")],
+                    ),
+                    (
+                        parse_layout_node,
+                        nii_to_h5_node_subject2MNI,
+                        [("bids_subject2MNI", "xfm_h5_out")],
+                    ),
+                ]
+            )
 
-    # Then MNI2Subject
-    if "MNI2subject" in subject_layout.keys():
-        convert_warpfield_node_MNI2subject = Node(ConvertWarpfield(), name="convert_warpfield_MNI2subject")
-        convert_warpfield_node_MNI2subject.inputs.itk_out_xfm = str(subject_layout["bids_MNI2subject"]).replace(
-            ".h5", ".nii.gz"
-        )
-        nii_to_h5_node_MNI2subject = Node(NIFTItoH5(), name="nii_to_h5_MNI2subject")
-        wf.connect(
-            [
-                (
-                    parse_layout_node,
-                    convert_warpfield_node_MNI2subject,
-                    [("MNI2subject", "fnirt_in_xfm"), ("MNI_ref", "fnirt_ref_file")],
-                ),
-                (
-                    convert_warpfield_node_MNI2subject,
-                    nii_to_h5_node_MNI2subject,
-                    [("itk_out_xfm", "xfm_nifti_in")],
-                ),
-                (
-                    parse_layout_node,
-                    nii_to_h5_node_MNI2subject,
-                    [("bids_MNI2subject", "xfm_h5_out")],
-                ),
-            ]
-        )
+        # Then MNI2Subject
+        if "MNI2subject" in subject_layout.keys():
+            convert_warpfield_node_MNI2subject = Node(ConvertWarpfield(), name="convert_warpfield_MNI2subject")
+            convert_warpfield_node_MNI2subject.inputs.itk_out_xfm = str(subject_layout["bids_MNI2subject"]).replace(
+                ".h5", ".nii.gz"
+            )
+            nii_to_h5_node_MNI2subject = Node(NIFTItoH5(), name="nii_to_h5_MNI2subject")
+            wf.connect(
+                [
+                    (
+                        parse_layout_node,
+                        convert_warpfield_node_MNI2subject,
+                        [("MNI2subject", "fnirt_in_xfm"), ("MNI_ref", "fnirt_ref_file")],
+                    ),
+                    (
+                        convert_warpfield_node_MNI2subject,
+                        nii_to_h5_node_MNI2subject,
+                        [("itk_out_xfm", "xfm_nifti_in")],
+                    ),
+                    (
+                        parse_layout_node,
+                        nii_to_h5_node_MNI2subject,
+                        [("bids_MNI2subject", "xfm_h5_out")],
+                    ),
+                ]
+            )
 
     # Now get transform to MNI2009cAsym
     MNI_template = subject_layout["MNI_template"]
@@ -333,7 +346,9 @@ def create_single_subject_wf(subject_layout, skip_mni2009c_norm=False):
     return wf
 
 
-def create_ingress2qsirecon_wf(layouts, name="ingress2qsirecon_wf", base_dir=os.getcwd(), skip_mni2009c_norm=False):
+def create_ingress2qsirecon_wf(
+    layouts, input_pipeline, name="ingress2qsirecon_wf", base_dir=os.getcwd(), skip_mni2009c_norm=False
+):
     """
     Creates the overall ingress2qsirecon workflow.
 
@@ -341,6 +356,9 @@ def create_ingress2qsirecon_wf(layouts, name="ingress2qsirecon_wf", base_dir=os.
     ----------
     layouts : list of dict
         A list of dictionaries, one per subject, from the create_layout function.
+
+    input_pipeline : str
+        The name of the input pipeline (e.g. 'hcpya', 'ukb')
 
     name : str, optional
         The name of the workflow. Default is "ingress2qsirecon_wf".
@@ -361,7 +379,9 @@ def create_ingress2qsirecon_wf(layouts, name="ingress2qsirecon_wf", base_dir=os.
     print(f"Subject(s) to run: {subjects_to_run}")
 
     for subject_layout in layouts:
-        single_subject_wf = create_single_subject_wf(subject_layout, skip_mni2009c_norm=skip_mni2009c_norm)
+        single_subject_wf = create_single_subject_wf(
+            subject_layout, input_pipeline, skip_mni2009c_norm=skip_mni2009c_norm
+        )
         wf.add_nodes([single_subject_wf])
 
     return wf

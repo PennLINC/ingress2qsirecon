@@ -37,7 +37,7 @@ PIPELINE_INFO = {
             "bvals": ["DTI", "dMRI", "dMRI", "bvals"],
             "bvecs": ["DTI", "dMRI", "dMRI", "bvecs"],
             "dwi": ["DTI", "dMRI", "dMRI", "data_ud.nii.gz"],
-            "dwiref": ["DTI", "dMRI", "dMRI", "dti_FA.nii.gz"],
+            # "dwiref": ["DTI", "dMRI", "dMRI", "dti_FA.nii.gz"],
             "t1w_brain": ["T1", "T1_unbiased_brain.nii.gz"],
             "brain_mask": ["T1", "T1_brain_mask.nii.gz"],
             # TODO: Add UKB XFM path
@@ -97,22 +97,47 @@ def make_bids_file_paths(subject_layout: dict) -> dict:
     bids_file_paths : :obj:`dict`
         A dictionary of BIDS-ified file paths.
     """
+    import nibabel as nb
+    import numpy as np
+
     bids_base = str(subject_layout["bids_base"])
     subject = str(subject_layout["subject"])
     session = subject_layout["session"]
     if session == None:
         sub_session_string = f"sub-{subject}"
+        bids_base_session = bids_base
     else:
         sub_session_string = f"sub-{subject}_ses-{session}"
+        bids_base_session = os.path.join(bids_base, f"ses-{session}")
     mni_template = str(subject_layout["MNI_template"])
 
+    # Check for DWI obliquity
+    dwi_img = nb.load(subject_layout["dwi"])
+    dwi_obliquity = np.any(nb.affines.obliquity(dwi_img.affine) > 1e-4)
+    if dwi_obliquity:
+        dwi_oblique_string = "_acq-VARIANTOblique"
+    else:
+        dwi_oblique_string = ""
+
     # BIDS-ify required files
-    bids_dwi_file = os.path.join(bids_base, "dwi", sub_session_string + "_space-T1w_desc-preproc_dwi.nii.gz")
-    bids_bval_file = os.path.join(bids_base, "dwi", sub_session_string + "_space-T1w_desc-preproc_dwi.bval")
-    bids_bvec_file = os.path.join(bids_base, "dwi", sub_session_string + "_space-T1w_desc-preproc_dwi.bvec")
-    bids_b_file = os.path.join(bids_base, "dwi", sub_session_string + "_space-T1w_desc-preproc_dwi.b")
-    bids_bmtxt_file = os.path.join(bids_base, "dwi", sub_session_string + "_space-T1w_desc-preproc_dwi.bmtxt")
-    bids_dwiref_file = os.path.join(bids_base, "dwi", sub_session_string + "_space-T1w_dwiref.nii.gz")
+    bids_dwi_file = os.path.join(
+        bids_base_session, "dwi", sub_session_string + dwi_oblique_string + "_space-T1w_desc-preproc_dwi.nii.gz"
+    )
+    bids_bval_file = os.path.join(
+        bids_base_session, "dwi", sub_session_string + dwi_oblique_string + "_space-T1w_desc-preproc_dwi.bval"
+    )
+    bids_bvec_file = os.path.join(
+        bids_base_session, "dwi", sub_session_string + dwi_oblique_string + "_space-T1w_desc-preproc_dwi.bvec"
+    )
+    bids_b_file = os.path.join(
+        bids_base_session, "dwi", sub_session_string + dwi_oblique_string + "_space-T1w_desc-preproc_dwi.b"
+    )
+    bids_bmtxt_file = os.path.join(
+        bids_base_session, "dwi", sub_session_string + dwi_oblique_string + "_space-T1w_desc-preproc_dwi.bmtxt"
+    )
+    bids_dwiref_file = os.path.join(
+        bids_base_session, "dwi", sub_session_string + dwi_oblique_string + "_space-T1w_dwiref.nii.gz"
+    )
 
     bids_file_paths = {
         "bids_dwi": Path(bids_dwi_file),
@@ -124,20 +149,42 @@ def make_bids_file_paths(subject_layout: dict) -> dict:
     }
 
     # Now for optional files
-    if subject_layout['t1w_brain']:
-        bids_t1w_brain = os.path.join(bids_base, "anat", sub_session_string + "_desc-preproc_T1w.nii.gz")
+    if 't1w_brain' in subject_layout:
+        # Check for T1w obliquity
+        t1_img = nb.load(subject_layout["t1w_brain"])
+        t1_obliquity = np.any(nb.affines.obliquity(t1_img.affine) > 1e-4)
+        if t1_obliquity:
+            t1_oblique_string = "_acq-VARIANTOblique"
+        else:
+            t1_oblique_string = ""
+
+        bids_t1w_brain = os.path.join(
+            bids_base, "anat", f"sub-{subject}" + t1_oblique_string + "_desc-preproc_T1w.nii.gz"
+        )
         bids_file_paths.update({"bids_t1w_brain": Path(bids_t1w_brain)})
-    if subject_layout['brain_mask']:
-        bids_brain_mask = os.path.join(bids_base, "anat", sub_session_string + "_desc-brain_mask.nii.gz")
+    if "brain_mask" in subject_layout:
+        bids_brain_mask = os.path.join(
+            bids_base, "anat", f"sub-{subject}" + t1_oblique_string + "_desc-brain_mask.nii.gz"
+        )
         bids_file_paths.update({"bids_brain_mask": Path(bids_brain_mask)})
-    if subject_layout['subject2MNI']:
+    if "subject2MNI" in subject_layout:
         bids_subject2MNI = os.path.join(
-            bids_base, "anat", sub_session_string + f"_from-T1w_to-{mni_template}_mode-image_xfm.h5"
+            bids_base, "anat", f"sub-{subject}" + f"_from-T1w_to-{mni_template}_mode-image_xfm.h5"
         )
         bids_file_paths.update({"bids_subject2MNI": Path(bids_subject2MNI)})
-    if subject_layout['MNI2subject']:
+    else:
+        bids_subject2MNI = os.path.join(
+            bids_base, "anat", f"sub-{subject}" + f"_from-T1w_to-MNI152NLin2009cAsym_mode-image_xfm.h5"
+        )
+        bids_file_paths.update({"bids_subject2MNI": Path(bids_subject2MNI)})
+    if "MNI2subject" in subject_layout:
         bids_MNI2subject = os.path.join(
-            bids_base, "anat", sub_session_string + f"_from-{mni_template}_to-T1w_mode-image_xfm.h5"
+            bids_base, "anat", f"sub-{subject}" + f"_from-{mni_template}_to-T1w_mode-image_xfm.h5"
+        )
+        bids_file_paths.update({"bids_MNI2subject": Path(bids_MNI2subject)})
+    else:
+        bids_MNI2subject = os.path.join(
+            bids_base, "anat", f"sub-{subject}" + f"_from-MNI152NLin2009cAsym_to-T1w_mode-image_xfm.h5"
         )
         bids_file_paths.update({"bids_MNI2subject": Path(bids_MNI2subject)})
 
@@ -186,8 +233,8 @@ def create_layout(input_dir: Path, output_dir: Path, input_pipeline: str, partic
 
         # Make BIDS base organization
         bids_base = output_dir / f"sub-{subject}"
-        if renamed_ses:
-            bids_base = bids_base / f"ses-{renamed_ses}"
+        # if renamed_ses:
+        #    bids_base = bids_base / f"ses-{renamed_ses}"
 
         file_paths = get_file_paths(potential_dir, input_pipeline)
         # check if any required files do not exist
@@ -204,6 +251,7 @@ def create_layout(input_dir: Path, output_dir: Path, input_pipeline: str, partic
             continue
 
         subject_layout = {
+            "original_name": potential_dir.name,
             "subject": subject,
             "session": renamed_ses,
             "path": Path(potential_dir),
@@ -221,7 +269,7 @@ def create_layout(input_dir: Path, output_dir: Path, input_pipeline: str, partic
     layout = sorted(layout, key=lambda x: x["subject"])
 
     # Raise warnings for requested subjects not in layout
-    missing_particpants = sorted(set(participant_label) - set([subject["subject"] for subject in layout]))
+    missing_particpants = sorted(set(participant_label) - set([subject["original_name"] for subject in layout]))
     if missing_particpants:
         warn(
             f"Requested participant(s) {missing_particpants} not found in layout, please confirm their data exists and are properly organized."

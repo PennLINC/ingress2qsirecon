@@ -252,6 +252,7 @@ class ConformDwi(SimpleInterface):
 
         else:
             LOGGER.info("Not applying reorientation to %s: already in %s", dwi_in_file, orientation)
+            input_img.to_filename(dwi_out_file)
             self._results["dwi_out_file"] = dwi_out_file
             # Copy and rename bvecs
             if not os.path.exists(bvec_out_file):
