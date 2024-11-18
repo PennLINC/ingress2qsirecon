@@ -159,32 +159,32 @@ def make_bids_file_paths(subject_layout: dict) -> dict:
             t1_oblique_string = ""
 
         bids_t1w_brain = os.path.join(
-            bids_base, "anat", f"sub-{subject}" + t1_oblique_string + "_desc-preproc_T1w.nii.gz"
+            bids_base_session, "anat", sub_session_string + t1_oblique_string + "_desc-preproc_T1w.nii.gz"
         )
         bids_file_paths.update({"bids_t1w_brain": Path(bids_t1w_brain)})
     if "brain_mask" in subject_layout:
         bids_brain_mask = os.path.join(
-            bids_base, "anat", f"sub-{subject}" + t1_oblique_string + "_desc-brain_mask.nii.gz"
+            bids_base_session, "anat", sub_session_string + t1_oblique_string + "_desc-brain_mask.nii.gz"
         )
         bids_file_paths.update({"bids_brain_mask": Path(bids_brain_mask)})
     if "subject2MNI" in subject_layout:
         bids_subject2MNI = os.path.join(
-            bids_base, "anat", f"sub-{subject}" + f"_from-T1w_to-{mni_template}_mode-image_xfm.h5"
+            bids_base_session, "anat", sub_session_string + f"_from-T1w_to-{mni_template}_mode-image_xfm.h5"
         )
         bids_file_paths.update({"bids_subject2MNI": Path(bids_subject2MNI)})
     else:
         bids_subject2MNI = os.path.join(
-            bids_base, "anat", f"sub-{subject}" + f"_from-T1w_to-MNI152NLin2009cAsym_mode-image_xfm.h5"
+            bids_base_session, "anat", sub_session_string + f"_from-T1w_to-MNI152NLin2009cAsym_mode-image_xfm.h5"
         )
         bids_file_paths.update({"bids_subject2MNI": Path(bids_subject2MNI)})
     if "MNI2subject" in subject_layout:
         bids_MNI2subject = os.path.join(
-            bids_base, "anat", f"sub-{subject}" + f"_from-{mni_template}_to-T1w_mode-image_xfm.h5"
+            bids_base_session, "anat", sub_session_string + f"_from-{mni_template}_to-T1w_mode-image_xfm.h5"
         )
         bids_file_paths.update({"bids_MNI2subject": Path(bids_MNI2subject)})
     else:
         bids_MNI2subject = os.path.join(
-            bids_base, "anat", f"sub-{subject}" + f"_from-MNI152NLin2009cAsym_to-T1w_mode-image_xfm.h5"
+            bids_base_session, "anat", sub_session_string + f"_from-MNI152NLin2009cAsym_to-T1w_mode-image_xfm.h5"
         )
         bids_file_paths.update({"bids_MNI2subject": Path(bids_MNI2subject)})
 

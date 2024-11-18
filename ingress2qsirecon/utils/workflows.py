@@ -78,13 +78,13 @@ def create_single_subject_wf(subject_layout, input_pipeline, skip_mni2009c_norm=
 
     # Make BIDS subject output folder
     bids_base = subject_layout['bids_base']
-    if not os.path.exists(bids_base):
-        os.makedirs(Path(bids_base / "anat").resolve(), exist_ok=True)
     session = subject_layout['session']
     if session == None:
         os.makedirs(Path(bids_base / "dwi").resolve(), exist_ok=True)
+        os.makedirs(Path(bids_base / "anat").resolve(), exist_ok=True)
     else:
         os.makedirs(Path(bids_base / f"ses-{session}" / "dwi").resolve(), exist_ok=True)
+        os.makedirs(Path(bids_base / f"ses-{session}" / "anat").resolve(), exist_ok=True)
 
     # Create single subject workflow
     wf_name = f"ingress2qsirecon_single_subject_{subject_name}_wf"
